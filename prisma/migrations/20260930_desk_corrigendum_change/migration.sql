@@ -1,0 +1,3 @@
+ALTER TABLE "DeskDocument" ADD COLUMN IF NOT EXISTS "changeNote" TEXT;
+ALTER TABLE "DeskDocument" ADD COLUMN IF NOT EXISTS "previousValue" TEXT;
+ALTER TABLE "DeskDocument" ADD COLUMN IF NOT EXISTS "updatedValue" TEXT;

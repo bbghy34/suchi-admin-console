@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "prisma generate && next build",
+  "crons": [
+    {
+      "path": "/api/desk/tick",
+      "schedule": "30 2 * * *"
+    }
+  ]
+}

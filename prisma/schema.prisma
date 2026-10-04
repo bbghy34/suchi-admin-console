@@ -1,0 +1,1050 @@
+// Prisma schema file for Suchii Group Tender System
+// Configured for PostgreSQL with existing 9 tables and relationships
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Firm {
+  id              String     @id @default(uuid())
+  name            String
+  gstNo           String?    @unique
+  address         String?
+  proprietorName  String?
+  phoneNo         String?
+  createdAt       DateTime   @default(now())
+  createdBy       String?
+  updatedAt       DateTime   @updatedAt
+  updatedBy       String?
+  isActive        Boolean    @default(true)
+
+  employees       Employee[]
+  projects        Project[]
+}
+
+model Department {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  HOD         String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  createdBy   String?
+  updatedBy   String?
+  isActive    Boolean    @default(true)
+
+  employees   Employee[]
+  projects    Project[]
+}
+
+model Designation {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  createdBy   String?
+  updatedBy   String?
+  isActive    Boolean    @default(true)
+
+  employees   Employee[]
+}
+
+model Employee {
+  id              String       @id @default(uuid())
+  employeeCode    String?
+  deptId          String?
+  name            String
+  email           String?
+  phone           BigInt?
+  dob             DateTime?    @db.Date
+  gender          String?
+  address         Json?
+  profileImageUrl String?
+  siteId          String?
+  joinDate        DateTime?    @db.Date
+  status          Boolean?     @default(true)
+  passwordHash    String?
+  role            String?
+  designationId   String?
+  bankDetails     Json?
+  pan             String?
+  aadhar          BigInt?
+  uan             String?
+  firmId          String?
+  emergencyNo     BigInt?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  createdBy       String?
+  updatedBy       String?
+
+  firm            Firm?        @relation(fields: [firmId], references: [id])
+  department      Department?  @relation(fields: [deptId], references: [id])
+  designation     Designation? @relation(fields: [designationId], references: [id])
+  managedSites    Site[]       @relation("SiteManager")
+  attendances     Attendance[]
+  leaves          Leave[]
+}
+
+model Project {
+  id            String      @id @default(uuid())
+  name          String
+  description   String?
+  type          String?
+  status        String?
+  department    String?
+  firmId        String?
+  progress      Int?
+  tenderId      String?
+  startDate     DateTime?
+  endDate       DateTime?
+  budget        Float?
+  contractor    String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  createdBy     String?
+  updatedBy     String?
+  isActive      Boolean     @default(true)
+
+  firm          Firm?       @relation(fields: [firmId], references: [id])
+  departmentRel Department? @relation(fields: [department], references: [id])
+  contractorRel Contractor? @relation(fields: [contractor], references: [id])
+  sites         Site[]
+  boqRecords    BOQs[]
+  progressRecords Progress[]
+  materialOutwards MaterialOutward[]
+  materialRequests MaterialRequest[]
+  tenderFiles   TenderFile[]
+  projectPayments ProjectPayment[]
+  boqBills      BoqBill[]
+}
+
+// One row per file an admin uploads after downloading it from the outside portal.
+// That site is not connected, so this table is the only copy of those files.
+model TenderFile {
+  id          String   @id @default(uuid())
+  projectId   String
+  tenderId    String
+  kind        String
+  name        String
+  fileUrl     String
+  storagePath String
+  source      String   @default("manual")
+  createdAt   DateTime @default(now())
+  createdBy   String?
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([projectId])
+  @@index([tenderId])
+  @@map("TenderFile")
+}
+
+model Site {
+  id                String       @id @default(uuid())
+  name              String
+  address           String?
+  coordinates       String?
+  attendanceRadius  Int?
+  status            String?
+  sitManager        String?
+  projectId         String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdBy         String?
+  updatedBy         String?
+  isActive          Boolean      @default(true)
+
+  manager     Employee?    @relation("SiteManager", fields: [sitManager], references: [id])
+  project     Project?     @relation(fields: [projectId], references: [id])
+  attendances Attendance[]
+  boqRecords  BOQs[]
+  progressRecords Progress[]
+  materialOutwards MaterialOutward[]
+  materialRequests MaterialRequest[]
+  siteExpenses SiteExpense[]
+}
+
+model Progress {
+  id        String   @id @default(uuid())
+  projectId String
+  siteId    String
+  images    String
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+  createdBy String?
+  isActive  Boolean  @default(true)
+
+  project Project @relation(fields: [projectId], references: [id])
+  site    Site    @relation(fields: [siteId], references: [id])
+
+  @@index([projectId])
+  @@index([siteId])
+  @@map("Progress")
+}
+
+// Site spending. Price is whole rupees (bigint). Site and employee ids in this
+// database are UUIDs, so siteId and createdBy are text, same as Progress.
+model SiteExpense {
+  id        String   @id @default(uuid())
+  itemName  String
+  price     BigInt
+  remarks   String?
+  siteId    String
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([siteId])
+  @@index([createdAt])
+  @@map("SiteExpense")
+}
+
+// Money received against a project. Amounts are whole rupees.
+// Project ids are UUIDs, so projectId is text.
+model ProjectPayment {
+  id                  String   @id @default(uuid())
+  projectId           String
+  billDate            DateTime
+  billNo              String
+  paymentReceivedDate DateTime
+  // Uploaded treasury bill pages: [{ name, path }]
+  treasuryBillDocs    Json     @default("[]")
+  amountReceived      BigInt
+  createdBy           String?
+  updatedBy           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([projectId])
+  @@index([billDate])
+  @@map("ProjectPayment")
+}
+
+// A supplier or other party that raises BOQ bills.
+// Ids are UUIDs, matching the rest of the app. GST is text because a GSTIN is alphanumeric.
+model Party {
+  id        String   @id @default(uuid())
+  name      String
+  phoneNo   String
+  gst       String?
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bills BoqBill[]
+
+  @@index([name])
+  @@map("Party")
+}
+
+// A party bill raised against a project, and how much of it has been paid.
+model BoqBill {
+  id              String   @id @default(uuid())
+  projectId       String
+  billDate        DateTime
+  billNo          String
+  billAmount      BigInt
+  partyId         String
+  billPayment     BigInt?
+  billPaymentDate DateTime?
+  // Uploaded bill pages: [{ name, path }]
+  billDocs        Json     @default("[]")
+  createdBy       String?
+  updatedBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  party   Party   @relation(fields: [partyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([projectId])
+  @@index([partyId])
+  @@index([billDate])
+  @@map("BoqBill")
+}
+
+model BOQs {
+  id        String    @id @default(uuid())
+  projectId String?
+  boqCode   String?
+  docsLinks Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  validity  DateTime? @db.Date
+  createdBy String?
+  updatedBy String?
+  isActive  Boolean   @default(true)
+  siteId    String?
+
+  project   Project?    @relation(fields: [projectId], references: [id])
+  site      Site?       @relation(fields: [siteId], references: [id])
+  items     BOQItems[]
+}
+
+model BOQItems {
+  id                       String    @id @default(uuid())
+  boqId                    String?
+  slNo                     String?
+  itemName                 String?
+  specification            String?
+  unit                     String?
+  quantity                 String?
+  rate                     Float?
+  amount                   Float?
+  remarks                  String?
+  itemLeft                 String?
+  itemReceivedTotalQuantity String?
+  itemReceivedImage        Json?
+  extraItem                String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @default(now()) @updatedAt
+  createdBy                String?
+  updatedBy                String?
+  isActive                 Boolean   @default(true)
+
+  boq        BOQs?          @relation(fields: [boqId], references: [id])
+  extraItems ExtraItemBOQ[]
+}
+
+model ExtraItemBOQ {
+  id              String    @id @default(uuid())
+  boqItemId       String?
+  itemName        String?
+  itemQuantity    String?
+  isApproved      Boolean   @default(false)
+  status          String    @default("PENDING")
+  approvedBy      String?
+  requestedBy     String?
+  remarks         String?
+  decisionRemarks String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  isActive        Boolean   @default(true)
+
+  boqItem BOQItems? @relation(fields: [boqItemId], references: [id])
+
+  @@index([boqItemId])
+}
+
+model Attendance {
+  id                   String    @id @default(uuid())
+  employeeId           String?
+  siteId               String?
+  checkInTime          DateTime?
+  checkOutTime         DateTime?
+  method               String?
+  gpsAccuracy          Float?
+  isFlagged            Boolean?  @default(false)
+  // Site location snapshot at check-in time
+  siteLat              Float?
+  siteLng              Float?
+  siteAttendanceRadius Int?
+  // Employee's check-in GPS location
+  checkInLat           Float?
+  checkInLng           Float?
+  // Computed distance from site centre (metres)
+  distanceFromSite     Float?
+  // Auto-generated location remark
+  locationRemarks      String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  createdBy            String?
+  updatedBy            String?
+  isActive             Boolean   @default(true)
+
+  employee     Employee? @relation(fields: [employeeId], references: [id])
+  site         Site?     @relation(fields: [siteId], references: [id])
+}
+
+model Leave {
+  id         String    @id @default(uuid())
+  employeeId String?
+  reason     String?
+  leaveDate  DateTime?
+  duration   Float?
+  approved   Boolean?  @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  createdBy  String?
+  updatedBy  String?
+  isActive   Boolean   @default(true)
+
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+}
+
+model Contractor {
+  id          String    @id @default(uuid())
+  name        String
+  phoneNo     String?
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  updatedBy   String?
+  isActive    Boolean   @default(true)
+
+  projects    Project[]
+}
+
+model MaterialCategory {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  materials   Material[]
+
+  @@map("MaterialCategory")
+}
+
+model Unit {
+  id        String     @id @default(uuid())
+  name      String
+  symbol    String
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  materials Material[]
+
+  @@map("Unit")
+}
+
+model Supplier {
+  id        String           @id @default(uuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  gstNumber String?
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  inwards   MaterialInward[]
+
+  @@map("Supplier")
+}
+
+model Material {
+  id          String            @id @default(uuid())
+  code        String            @unique
+  name        String
+  categoryId  String
+  unitId      String
+  minStock    Float             @default(0)
+  description String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  category    MaterialCategory  @relation(fields: [categoryId], references: [id])
+  unit        Unit              @relation(fields: [unitId], references: [id])
+  stock       Stock?
+  ledger      StockLedger[]
+  adjustments StockAdjustment[]
+  inwards     MaterialInward[]
+  outwards    MaterialOutward[]
+  requests    MaterialRequest[]
+
+  @@index([categoryId])
+  @@index([unitId])
+  @@map("Material")
+}
+
+model Stock {
+  id         String   @id @default(uuid())
+  materialId String   @unique
+  quantity   Float    @default(0)
+  updatedAt  DateTime @updatedAt
+  material   Material @relation(fields: [materialId], references: [id])
+
+  @@map("Stock")
+}
+
+model StockLedger {
+  id            String   @id @default(uuid())
+  materialId    String
+  movement      String
+  quantity      Float
+  balanceAfter  Float
+  referenceType String
+  referenceId   String?
+  remarks       String?
+  createdAt     DateTime @default(now())
+  createdBy     String?
+  material      Material @relation(fields: [materialId], references: [id])
+
+  @@index([materialId])
+  @@index([createdAt])
+  @@map("StockLedger")
+}
+
+model StockAdjustment {
+  id         String   @id @default(uuid())
+  materialId String
+  direction  String
+  quantity   Float
+  reason     String
+  createdAt  DateTime @default(now())
+  createdBy  String?
+  isActive   Boolean  @default(true)
+  material   Material @relation(fields: [materialId], references: [id])
+
+  @@index([materialId])
+  @@map("StockAdjustment")
+}
+
+model MaterialInward {
+  id         String   @id @default(uuid())
+  grnNumber  String   @unique
+  supplierId String
+  materialId String
+  quantity   Float
+  rate       Float    @default(0)
+  receivedAt DateTime @default(now())
+  remarks    String?
+  createdBy  String?
+  isActive   Boolean  @default(true)
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  material   Material @relation(fields: [materialId], references: [id])
+
+  @@index([materialId])
+  @@index([supplierId])
+  @@map("MaterialInward")
+}
+
+model MaterialOutward {
+  id          String           @id @default(uuid())
+  issueNumber String           @unique
+  materialId  String
+  projectId   String?
+  siteId      String?
+  quantity    Float
+  purpose     String?
+  issuedAt    DateTime         @default(now())
+  requestId   String?          @unique
+  createdBy   String?
+  isActive    Boolean          @default(true)
+  material    Material         @relation(fields: [materialId], references: [id])
+  project     Project?         @relation(fields: [projectId], references: [id])
+  site        Site?            @relation(fields: [siteId], references: [id])
+  request     MaterialRequest? @relation(fields: [requestId], references: [id])
+
+  @@index([materialId])
+  @@index([projectId])
+  @@map("MaterialOutward")
+}
+
+model MaterialRequest {
+  id          String           @id @default(uuid())
+  materialId  String
+  projectId   String?
+  siteId      String?
+  quantity    Float
+  status      String           @default("PENDING")
+  remarks     String?
+  requestedBy String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  isActive    Boolean          @default(true)
+  material    Material         @relation(fields: [materialId], references: [id])
+  project     Project?         @relation(fields: [projectId], references: [id])
+  site        Site?            @relation(fields: [siteId], references: [id])
+  issue       MaterialOutward?
+
+  @@index([materialId])
+  @@index([status])
+  @@map("MaterialRequest")
+}
+
+// ---------------------------------------------------------------------------
+// Tender Desk — the morning register inside this console.
+// Tables are prefixed so they stay separate from TenderFile and Project.tenderId.
+// A row in DeskPerson is the console employee while they use this desk.
+// ---------------------------------------------------------------------------
+
+model Person {
+  id           String   @id @default(uuid())
+  employeeId   String?  @unique
+  name         String
+  roles        String
+  passwordHash String   @default("console")
+  createdAt    DateTime @default(now())
+
+  selections     Selection[]
+  notifications  Notification[]
+  activities     Activity[]
+  fetchLogs      FetchLog[]
+  documents      Document[]
+  checklistTicks ChecklistTick[]
+  fetchOverrides FetchAssignment[]
+
+  @@map("DeskPerson")
+}
+
+model Setting {
+  key   String @id
+  value String
+
+  @@map("DeskSetting")
+}
+
+model FetchAssignment {
+  id        String   @id @default(uuid())
+  personId  String
+  fromDate  String
+  toDate    String
+  note      String?
+  createdAt DateTime @default(now())
+
+  person Person @relation(fields: [personId], references: [id])
+
+  @@map("DeskFetchAssignment")
+}
+
+model Source {
+  id           String  @id
+  order        Int
+  displayName  String
+  officialName String
+  url          String
+  extraUrls    String?
+  mark         String
+  markNote     String?
+  intakeRule   String
+  allIndia     Boolean @default(false)
+  isDaily      Boolean @default(true)
+  groupKey     String?
+  pinned       Boolean @default(false)
+  state        String?
+  kind         String  @default("GEPNIC")
+  noNewLabel   String  @default("No new tender")
+  config       String?
+
+  tenders   Tender[]
+  fetchLogs FetchLog[]
+
+  @@map("DeskSource")
+}
+
+model FetchLog {
+  id       String   @id @default(uuid())
+  sourceId String
+  date     String
+  outcome  String
+  reason   String?
+  personId String
+  at       DateTime @default(now())
+
+  source Source @relation(fields: [sourceId], references: [id])
+  person Person @relation(fields: [personId], references: [id])
+
+  @@unique([sourceId, date])
+  @@map("DeskFetchLog")
+}
+
+model Tender {
+  id       String  @id @default(uuid())
+  isSample Boolean @default(false)
+  sourceId String
+  title    String
+
+  state            String?
+  allIndia         Boolean @default(false)
+  placeOfWork      String?
+  placeOfWorkState String?
+
+  portalTenderId String?
+  referenceNo    String?
+  orgChain       String?
+  category       String?
+  workCategory   String?
+  scheme         String?
+  estimatedValue Float?
+  emdAmount      Float?
+  emdMode        String?
+  tenderFee      Float?
+  publishedAt    DateTime?
+  docSaleEnd     DateTime?
+  bidSubmissionEnd DateTime
+  bidOpeningAt   DateTime?
+  bidOpeningPlace String?
+  preBidAt       DateTime?
+  preBidPlace    String?
+  periodOfWorkDays Int?
+  bidValidityDays  Int?
+  location       String?
+  district       String?
+  pinCode        String?
+  nodalOfficer   String?
+  nodalPhone     String?
+  sourceUrl      String?
+  description    String?
+  searchKeywords String?
+
+  gemBidNumber      String?
+  gemBuyer          String?
+  gemConsigneeState String?
+  gemRa             String?
+
+  uploadAnywayReason String?
+  linkedTenderId     String?
+
+  stage String @default("UPLOADED")
+
+  awardDate    DateTime?
+  awardedValue Float?
+
+  completionCertNo    String?
+  completionDate      DateTime?
+  completionAuthority String?
+  completionNote      String?
+  completionSavedAt   DateTime?
+  sdReleaseEligibleAt DateTime?
+  sdReleaseConditions String?
+
+  summaryJson  String?
+  summaryAt    DateTime?
+  summaryFiles String?
+  summaryError String?
+  summaryBusy  Boolean @default(false)
+  summaryRunId String?
+  summaryStartedAt DateTime?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  source        Source          @relation(fields: [sourceId], references: [id])
+  documents     Document[]
+  selections    Selection[]
+  checklist     ChecklistItem[]
+  instruments   Instrument[]
+  applications  RefundApplication[]
+  notifications Notification[]
+  activities    Activity[]
+
+  @@unique([sourceId, portalTenderId])
+  @@map("DeskTender")
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  tenderId      String
+  type          String
+  fileName      String
+  storedName    String?
+  mime          String?
+  size          Int?
+  docDate       DateTime?
+  extractedText String?
+  textStatus    String?
+  changeNote    String?
+  previousValue String?
+  updatedValue  String?
+  uploadedById  String?
+  uploadedAt    DateTime @default(now())
+
+  tender     Tender  @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  uploadedBy Person? @relation(fields: [uploadedById], references: [id])
+  file       DocumentFile?
+
+  @@map("DeskDocument")
+}
+
+model DocumentFile {
+  documentId String @id
+  bytes      Bytes
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("DeskDocumentFile")
+}
+
+model Selection {
+  id         String   @id @default(uuid())
+  tenderId   String
+  personId   String
+  frequency  String   @default("FREQUENT")
+  selectedAt DateTime @default(now())
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  person Person @relation(fields: [personId], references: [id])
+
+  @@unique([tenderId, personId])
+  @@map("DeskSelection")
+}
+
+model ChecklistItem {
+  id          String  @id @default(uuid())
+  tenderId    String
+  label       String
+  section     String
+  mandatory   Boolean @default(false)
+  fromSummary Boolean @default(true)
+  sourceFile  String?
+  addedById   String?
+  order       Int     @default(0)
+
+  tender Tender          @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  ticks  ChecklistTick[]
+
+  @@map("DeskChecklistItem")
+}
+
+model ChecklistTick {
+  id       String   @id @default(uuid())
+  itemId   String
+  personId String
+  tickedAt DateTime @default(now())
+
+  item   ChecklistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  person Person        @relation(fields: [personId], references: [id])
+
+  @@unique([itemId, personId])
+  @@map("DeskChecklistTick")
+}
+
+model Instrument {
+  id       String @id @default(uuid())
+  tenderId String
+  category String
+  form     String
+  amount   Float  @default(0)
+  inFavourOf String?
+  bank     String?
+  branch   String?
+  number   String?
+  instrumentDate DateTime?
+  expiryDate     DateTime?
+  submittedOn    DateTime?
+
+  submittedToName     String?
+  submittedToDept     String?
+  submittedToDistrict String?
+  submittedToState    String?
+
+  proofDocumentId String?
+  status          String  @default("TO_ARRANGE")
+  note            String?
+  convertedToId   String?
+
+  refundOfficeName     String?
+  refundOfficeDept     String?
+  refundOfficeAddress  String?
+  refundOfficeDistrict String?
+  refundOfficeState    String?
+  refundOfficerName    String?
+  refundOfficePhone    String?
+  refundOfficeEmail    String?
+
+  refundedOn    DateTime?
+  applicationId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tender      Tender             @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  application RefundApplication? @relation(fields: [applicationId], references: [id])
+
+  @@map("DeskInstrument")
+}
+
+model RefundApplication {
+  id            String   @id @default(uuid())
+  tenderId      String
+  kind          String
+  status        String   @default("DRAFT")
+  letterText    String
+  officeName    String
+  officeDept    String?
+  officeAddress String?
+  officeDistrict String?
+  officeState   String?
+  officerName   String?
+  sentOn        DateTime?
+  ackOn         DateTime?
+  ackDocumentId String?
+  releasedOn    DateTime?
+  rejectNote    String?
+  instrumentsSnapshot String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tender      Tender       @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  instruments Instrument[]
+
+  @@map("DeskRefundApplication")
+}
+
+model Notification {
+  id           String    @id @default(uuid())
+  personId     String
+  tenderId     String?
+  kind         String
+  title        String
+  body         String?
+  dedupeKey    String?   @unique
+  scheduledFor DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  readAt       DateTime?
+
+  person Person  @relation(fields: [personId], references: [id])
+  tender Tender? @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([personId, readAt])
+  @@map("DeskNotification")
+}
+
+model Activity {
+  id       String   @id @default(uuid())
+  tenderId String?
+  personId String?
+  action   String
+  detail   String?
+  at       DateTime @default(now())
+
+  tender Tender? @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  person Person? @relation(fields: [personId], references: [id])
+
+  @@index([tenderId, at])
+  @@map("DeskActivity")
+}
+
+model OnlineHit {
+  id             String   @id @default(uuid())
+  query          String
+  title          String
+  link           String   @unique
+  site           String?
+  detail         String?
+  eligibility    String?
+  documentsJson  String?
+  fetchedAt      DateTime @default(now())
+
+  @@map("DeskOnlineHit")
+}
+
+model OnlineHitTemp {
+  id             String   @id @default(uuid())
+  query          String
+  title          String
+  link           String
+  site           String?
+  detail         String?
+  eligibility    String?
+  documentsJson  String?
+  fetchedAt      DateTime
+  archivedAt     DateTime @default(now())
+
+  @@map("DeskOnlineHitTemp")
+}
+
+// Pending official originals belong to the requester until manual metadata review.
+model OfficialRetrievalArtifact {
+  id        String   @id @default(uuid())
+  requestId String
+  ownerId   String
+  name      String
+  mime      String
+  sha256    String
+  sourceUrl String?
+  bytes     Bytes
+  createdAt DateTime @default(now())
+
+  @@index([ownerId, requestId])
+  @@unique([ownerId, requestId, sha256])
+  @@map("DeskRetrievalArtifact")
+}
+
+// Portal tender rows. String columns are unbounded varchar (PostgreSQL text).
+model DailyTender {
+  id                BigInt    @id @default(autoincrement())
+  portalLink        String
+  ePublishedDate    DateTime  @db.Date
+  closingDate       DateTime  @db.Date
+  openingDate       DateTime  @db.Date
+  titleAndRefNo     String
+  tenderId          String
+  organisationChain String
+  tenderDetails     Json
+  emdAmount         BigInt
+  emdDoc            Json?
+  emdDate           DateTime? @db.Date
+  emdMoneyOffice    String?
+  emdThrough        String?
+  emdMode           String?
+  preQualification  String
+  tenderValue       BigInt
+  tenderFee         BigInt?
+  productCategory   String
+  tenderDocs        Json
+  sdMoney           BigInt?
+  sdDocs            Json?
+  sdIssueDate       DateTime? @db.Date
+  sdExpireDate      DateTime? @db.Date
+  sdMoneyOffice     String?
+  sdThrough         String?
+  sdMode            String?
+  corrigendum       Json
+  subCategory       String
+  tAck              Json
+  isWin             String?
+  status            String    @default("pending")
+
+  @@map("DailyTenders")
+}
+
+model SavedTender {
+  id                BigInt    @id @default(autoincrement())
+  portalLink        String
+  ePublishedDate    DateTime  @db.Date
+  closingDate       DateTime  @db.Date
+  openingDate       DateTime  @db.Date
+  titleAndRefNo     String
+  tenderId          String
+  organisationChain String
+  tenderDetails     Json
+  emdAmount         BigInt
+  emdDoc            Json?
+  emdDate           DateTime? @db.Date
+  emdMoneyOffice    String?
+  emdThrough        String?
+  emdMode           String?
+  preQualification  String
+  tenderValue       BigInt
+  tenderFee         BigInt?
+  productCategory   String
+  tenderDocs        Json
+  sdMoney           BigInt?
+  sdDocs            Json?
+  sdIssueDate       DateTime? @db.Date
+  sdExpireDate      DateTime? @db.Date
+  sdMoneyOffice     String?
+  sdThrough         String?
+  sdMode            String?
+  corrigendum       Json
+  subCategory       String
+  tAck              Json
+  isWin             String?
+  /// When isWin was set to Win, Loss, or Cancelled. EMD tracking counts from here.
+  resultDate        DateTime? @db.Date
+  status            String    @default("pending")
+
+  @@map("SavedTenders")
+}

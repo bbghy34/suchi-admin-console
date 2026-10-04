@@ -1,0 +1,11 @@
+__pycache__/
+captcha.png
+results.json
+downloads/
+verification/
+.env
+.env.local
+data/
+*.sqlite3*
+.venv/
+*.part

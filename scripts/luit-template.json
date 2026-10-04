@@ -1,0 +1,173 @@
+{
+  "description": "How scripts/sync-luit-template.mjs turns this client repo into the client-neutral Luit Console template.",
+  "templateDir": "../luit-console",
+  "keep": [
+    "config/client.js",
+    "README.md",
+    "public/client-logo.png"
+  ],
+  "drop": [
+    "docs",
+    "data",
+    "suchii-group-auth-key.json",
+    "public/logo.jpeg",
+    "public/suchii group logo flat.png",
+    ".claude",
+    "scripts/luit-template.json",
+    "scripts/sync-luit-template.mjs"
+  ],
+  "textExtensions": [
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".json",
+    ".md",
+    ".sql",
+    ".prisma",
+    ".css",
+    ".txt",
+    ".example",
+    ".yml",
+    ".yaml",
+    ".gitignore"
+  ],
+  "replace": [
+    [
+      ",\r?\n    \"template:sync\": \"node scripts/sync-luit-template.mjs\"",
+      ""
+    ],
+    [
+      "suchii_desk_test",
+      "luit_desk_test"
+    ],
+    [
+      "'suchii-prefs'",
+      "'luit-prefs'"
+    ],
+    [
+      "`suchii-guide:",
+      "`luit-guide:"
+    ],
+    [
+      "suchii-guide:",
+      "luit-guide:"
+    ],
+    [
+      "SuchiiGroupAdminConsole/1\\.0",
+      "LuitConsole/1.0"
+    ],
+    [
+      "Suchii-Tender-Import/1\\.0",
+      "Luit-Tender-Import/1.0"
+    ],
+    [
+      "SuchiiTenderDesk/1\\.0",
+      "LuitTenderDesk/1.0"
+    ],
+    [
+      "suchii-group-auth-key\\.json",
+      "luit-auth-key.json"
+    ],
+    [
+      "suchii-group-operations-console",
+      "luit-console"
+    ],
+    [
+      "suchii-group-operation-console-prod",
+      "luit-console"
+    ],
+    [
+      "suchii-group-site-manager-app",
+      "luit-field-app"
+    ],
+    [
+      "suchii-group-site-manager",
+      "luit-field-app"
+    ],
+    [
+      "admin\\.suchiigroup\\.com",
+      "console.example.com"
+    ],
+    [
+      "suchii-group-admin\\.vercel\\.app",
+      "console.example.com"
+    ],
+    [
+      "@suchiigroup\\.com",
+      "@example.com"
+    ],
+    [
+      "@suchiigroup\\.in",
+      "@example.com"
+    ],
+    [
+      "@suchii\\.com",
+      "@example.com"
+    ],
+    [
+      "suchiigroup\\.com",
+      "example.com"
+    ],
+    [
+      "Suchii Infra Ltd",
+      "Example Infra Ltd"
+    ],
+    [
+      "Suchii Construction Pvt\\. Ltd\\.",
+      "Example Construction Pvt. Ltd."
+    ],
+    [
+      "suchii-group-assets",
+      "luit-client-assets"
+    ],
+    [
+      "suchii-group-production",
+      "luit-client-production"
+    ],
+    [
+      "\"suchii-group\"",
+      "\"luit-client\""
+    ],
+    [
+      "Suchii Group Corporate Towers",
+      "Client Corporate Towers"
+    ],
+    [
+      "Suchii Administrator",
+      "Client Administrator"
+    ],
+    [
+      "Suchii (Admin|Manager|Worker)",
+      "Client $1"
+    ],
+    [
+      "SUCHII GROUP OPERATIONS CONSOLE",
+      "LUIT CONSOLE"
+    ],
+    [
+      "dev-only-suchii-insecure-secret-change-me",
+      "dev-only-luit-insecure-secret-change-me"
+    ],
+    [
+      "# 🏗️ Luit \\(Suchii Group Operations Console\\) · Agent Reference Manual",
+      "# 🏗️ Luit Console · Agent Reference Manual"
+    ],
+    [
+      "this deployment's client is Suchii Group\\.",
+      "each deployment runs for one client, set in `config/client.js`."
+    ],
+    [
+      "Suchii Group Operations Console",
+      "Luit Console"
+    ],
+    [
+      "Suchii Group",
+      "the client"
+    ]
+  ],
+  "allowedMentions": [
+    "lib/jwt-secret.js",
+    ".luit-source"
+  ]
+}

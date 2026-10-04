@@ -1,0 +1,1 @@
+ALTER TABLE "DeskTender" ADD COLUMN IF NOT EXISTS "searchKeywords" TEXT;
